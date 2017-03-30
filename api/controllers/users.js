@@ -22,8 +22,6 @@ const {
        delete user[0].hashed_password;
        delete user[0].created_at;
        delete user[0].updated_at;
-       delete user[0].id;
-       delete user[0].user_name;
        console.log(user);
      }
      res.status(200).json(user);
@@ -53,6 +51,8 @@ function getUserPlaylistByUserId(req, res){
           delete object.created_at;
           delete object.hashed_password;
           delete object.user_id;
+          delete object.user_name;
+          delete object.id;
         });
       }
       res.status(200).json(usersongs);
