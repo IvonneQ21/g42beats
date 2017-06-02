@@ -1,11 +1,14 @@
-'use strict';
 
-const knex = require('../../knex');
-const bcrypt = require('bcrypt-as-promised');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv').config();
+
+const knex = require("../../knex");
+const bcrypt = require("bcrypt-as-promised");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+const formatSongs = require("./apicallFormat").formatSongs;
+const rp = require("request-promise");
+const dotenv = require("dotenv").config();
 const {
+<<<<<<< HEAD
     camelizeKeys,
     decamelizeKeys
 } = require('humps');
@@ -29,93 +32,118 @@ const {
    .catch(err => {
      console.error(err);
    });
+||||||| merged common ancestors
+    camelizeKeys,
+    decamelizeKeys
+} = require('humps');
+//Ivonne
+ function userById(req, res) {
+   let paramId = req.swagger.params.id.value;
+   knex('users')
+   .where('id', paramId)
+   .then(user=> {
+     if(!user) {
+       console.log("this is the user i see first", user);
+       res.status(404).json('Not Found');
+     } else {
+       delete user[0].hashed_password;
+       delete user[0].created_at;
+       delete user[0].updated_at;
+       delete user[0].id;
+       delete user[0].user_name;
+       console.log(user);
+     }
+     res.status(200).json(user);
+   })
+   .catch(err => {
+     console.error(err);
+   });
+=======
+  camelizeKeys,
+  decamelizeKeys
+} = require("humps");
+
+// would like to see comments above each function.
+function userById(req, res) {
+  const paramId = req.swagger.params.id.value;
+  knex("users")
+    .where("id", paramId)
+    .then((user) => {
+      if (!user) {
+        res.status(404).json("Not Found");
+      } else {
+        delete user[0].hashed_password;
+        delete user[0].created_at;
+        delete user[0].updated_at;
+      }
+      res.status(200).json(user);
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+>>>>>>> 8188b833beff25520272f9bf62e5ac7e36945fb3
 }
 
-// grab user playlist Ivonne
-function getUserPlaylistByUserId(req, res){
-  let userId = req.swagger.params.id.value;
-  knex('users')
-  .join('playlist','users.id', '=', 'playlist.user_id')
-  .join('songs', 'playlist.song_id', '=', 'songs.id')
-  .select()
-  .where('user_id', userId)
+// would like to see comments above each function.
+function getUserPlaylistByUserId(req, res) {
+  let formatedSongs;
+  const userId = req.swagger.params.id.value;
+  knex("users")
+    .join("playlist", "users.id", "=", "playlist.user_id")
+    .join("songs", "playlist.song_id", "=", "songs.id")
+    .select()
+    .where("user_id", userId)
     .then((usersongs) => {
-      console.log(usersongs);
-      if(!usersongs){
-        res.status(404).json('Not Found');
+      if (!usersongs) {
+        res.status(404).json("Not Found");
       } else {
-        usersongs.map(function(object){
+        formatedSongs = usersongs.map((object) => {
           delete object.hashed_password;
           delete object.song_id;
           delete object.updated_at;
           delete object.created_at;
           delete object.hashed_password;
           delete object.user_id;
-          delete object.user_name;
           delete object.id;
+          delete object.user_name;
+          return object;
         });
       }
-      res.status(200).json(usersongs);
+      const urlReadySongs = formatSongs(formatedSongs);
+      return formatedSongs;
+    })
+
+    .then((songObjects) => {
+      const spotifyRequests = songObjects.map(songObj => rp(`https://api.spotify.com/v1/search?q=${songObj.song_name}%20artist:${songObj.artist}&type=track`));
+      return Promise.all(spotifyRequests);
+    })
+    .then((spotifyResponses) => {
+      const parsedResponse = spotifyResponses.map((album) => {
+        if (album === undefined) {
+          return "preview url not found";
+        }
+        return JSON.parse(album).tracks.items;
+      });
+      const urlsArr = parsedResponse.map(ele => ele[0].preview_url);
+      res.status(200);
+      res.send(urlsArr);
     })
     .catch((err) => {
       console.error(err);
-    })
+    });
 }
 
-// function getUserPlaylistByGroupIdandUserId(req, res) {
-//   let gid = req.swagger.params.id.value;
-//   knex('oups')
-// }
-      // }
 
-
-
-function createUser(req, res, next) {
-  let userId
-    bcrypt.hash(req.body.password, 12)
-        .then((hashed_password) => {
-          return knex('users')
-              .insert({
-                  user_name: req.body.user_name,
-                  hashed_password: hashed_password,
-                  // group_name: req.body.groupname
-              }, '*');
-        })
-        .then((user) => {
-            let newUser = user[0];
-            const claim = {
-                userId: newUser.id,
-                // permissions: newUser.permissions
-                //NOTE: this will be useful for the superuser.
-            }
-            const token = jwt.sign(claim, process.env.JWT_KEY);
-            newUser.token = token
-            delete newUser.hashed_password;
-            res.status(200).send(camelizeKeys(newUser));
-            return newUser;
-        })
-        .then((checkingGroup) => {
-           const id = knex('groups').where('group_name', req.body.groupname).select('id');
-           return id;
-        })
-        .then((insertingGroupMember) => {
-          console.log(checkingGroup);
-          knex('group_members').insert({group_id: insertingGroupMember, user_id: userId})
-        })
-        .catch((err) => {
-            next(err);
-        });
-}
-
-function getGroupsPerUser(req, res){
-  let userId = req.swagger.params.id.value;
-  knex('groups')
-  .join('group_members','groups.id', '=', 'group_members.group_id')
-  .select()
-  .where('user_id', userId)
+// would like to see comments above each function.
+function getGroupsPerUser(req, res) {
+  const userId = req.swagger.params.id.value;
+  knex("groups")
+    .join("group_members", "groups.id", "=", "group_members.group_id")
+    .select()
+    .where("user_id", userId)
     .then((userGroups) => {
-      if(!userGroups){
-        res.status(404).json('Not Found');
+      if (!userGroups) {
+        res.status(404).json("Not Found");
       } else {
         delete userGroups[0].created_at;
         delete userGroups[0].updated_at;
@@ -127,65 +155,110 @@ function getGroupsPerUser(req, res){
     })
     .catch((err) => {
       console.error(err);
-    })
+    });
 }
-//Partly working. need to also insert the songId into the dt and playlist.
+
+// would like to see comments above each function.
 function addSong(req, res) {
-  let user = req.body.user_name;
-  let songName = req.body.song;
-  let artistName = req.body.artist;
-  knex('songs')
-  .insert({
-    song_name: songName,
-    artist: artistName
-  }, '*')
-  //srill working through this part.
-  // .select('id')
-  // .where( {
-  //   song_name: songName,
-  //   artit: artistName
-  // })
-  // .insert({
-  //
-  // })
-  .then((songToAdd) => {
-    console.log(songToAdd);
-    res.send(songToAdd[0]);
-  })
-  .catch((err) => {
-    console.error(err);
-  })
+  const userName = req.body.user_name;
+  const songName = req.body.song;
+  const artistName = req.body.artist;
+  const userId = req.swagger.params.id.value;
+  let song;
+
+  knex("songs")
+    .select()
+    .where("song_name", songName)
+    .where("artist", artistName)
+    .first()
+    .then((song) => {
+      if (song) {
+        const data = {
+          song_id: song.id,
+          user_id: userId
+        };
+        knex("playlist")
+          .insert(data, "*")
+          .then((playlistResult) => {
+            res.send(200, data);
+          });
+      } else {
+        knex("songs")
+          .insert({
+            song_name: songName,
+            artist: artistName
+          }, "*")
+          .then((songToAdd) => {
+            song = songToAdd[0];
+            return knex("playlist")
+              .insert({
+                user_id: userId,
+                song_id: songToAdd[0].id
+              }, "*");
+          })
+          .then((playlistArray) => {
+            delete song.created_at;
+            delete song.updated_at;
+            delete playlistArray[0].created_at;
+            delete playlistArray[0].updated_at;
+            res.send(200, {
+              song,
+              playlist: playlistArray[0]
+            });
+          });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+    });
 }
 
-// function deleteSong(){}
 
-//example of Delete User Try this for my user.
+// would like to see comments above each function.
+function deleteSong(req, res) {
+  const userId = req.swagger.params.id.value;
+  const songId = req.swagger.params.sid.value;
+  let playlistToDelete;
 
-// function deleteUser(req, res) {
-//   let knex = require('../../knex.js');
-//   let paramId = req.swagger.params.user_id.value;
-//   if (req.body.userId !== paramId){
-//     res.status(401).json('Unauthorized: The ID you are attempting to delete belongs to another user');
-//   } else {
-//     knex('users')
-//     .del()
-//     .where('id', paramId)
-//     .then((user) => {
-//       res.send(user[0]);
-//     })
-//     .catch((err) => {
-//       console.error(err);
-//     })
-//     .finally(() => {
-//       // knex.destroy();
-//     });
-//   };
-// }
+  knex("playlist")
+    .select()
+    .where("user_id", userId)
+    .where("song_id", songId)
+    .first()
+    .then((playlistAssociation) => {
+      playlistToDelete = playlistAssociation;
+      delete playlistToDelete.created_at;
+      delete playlistToDelete.updated_at;
+      delete playlistToDelete.id;
+      // console.log(playlistToDelete);
+    })
+    .then(() => knex("songs")
+      .select()
+      .where("id", songId)
+      .first())
+    .then((song) => {
+      delete song.created_at;
+      delete song.updated_at;
+      delete song.id;
+      return song;
+    })
+    .then((song) => {
+      res.send(200, {
+        song,
+        playlist: playlistToDelete
+      });
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}
 
-        module.exports ={
-            userById: userById,
-            getUserPlaylistByUserId: getUserPlaylistByUserId,
-            getGroupsPerUser: getGroupsPerUser,
-            addSong: addSong
-            // getGroupCompiledPlaylist: getGroupCompiledPlaylist
-        }
+
+module.exports = {
+  userById,
+  getUserPlaylistByUserId,
+  getGroupsPerUser,
+  addSong,
+  deleteSong
+  // getGroupCompiledPlaylist: getGroupCompiledPlaylist
+};

@@ -1,19 +1,25 @@
 'use strict';
 
 var SwaggerExpress = require('swagger-express-mw');
-var app = require('express')();
+const express = require('express');
+var app = require('express');
+const cors = require('cors');
 const auth = require('./validations/verifytoken.js');
-
 
 
 
 var config = {
   appRoot: __dirname // required config
 };
+ app.use(express.static(paths.join('public')));
+ app.use(cors());
 
-// app.use('/api/controllers/groups', auth.verify);
+ var config = {
+   appRoot: __dirname
+ };
+// app.use('/groups', auth.verifyToken);
 //
-// app.use('/api/controllers/users', auth.verify);
+// app.use('/users', auth.verifyToken);
 
 SwaggerExpress.create(config, function(err, swaggerExpress) {
   if (err) { throw err; }

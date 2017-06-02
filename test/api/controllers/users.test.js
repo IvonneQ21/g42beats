@@ -54,26 +54,26 @@ const bcrypt = require('bcrypt');
 
     //get a userByID
 describe('GET users/{id}', () => {
-    it('should respond with song information with the specified id', (done) => {
+    it('should respond with user information with the specified id', (done) => {
       supertest(app)
-        .get('/users/1')
+        .get('/api/users/1')
         .set('Accept', 'application/json')
         .expect(200, [{
-          "id": 1,
-          "user_name": 'AlexKrawiec'
+          id: 1,
+          user_name: 'AlexKrawiec'
         }], done);
     });
 
-    it('should respond with 404 if song enters incorrect parameter', (done) => {
+    it('should respond with 404 if user enters incorrect parameter', (done) => {
       supertest(app)
-      .get('/users/hkhjk')
+      .get('/api/users/hkhjk')
       .set('Accept', 'Application/json')
       .expect(404, JSON.stringify({code:404, message: "please enter valid information"}, done));
     });
 
-    it('should respond with song information with the specified id', (done) => {
+    it('should respond with user information with the specified id', (done) => {
       supertest(app)
-        .get('/users/4')
+        .get('/api/users/4')
         .set('Accept', 'application/json')
         .expect([{
           id: 4,
@@ -83,99 +83,88 @@ describe('GET users/{id}', () => {
 });
 
 describe('GET /users/{id}/playlist', () => {
-    it("should respond with song's personal playlist that is associated with the specified id", (done) => {
+    it("should respond with user's personal playlist that is associated with the specified id", (done) => {
       supertest(app)
-        .get('/users/1/playlist')
+        .get('/api/users/1/playlist')
         .set('Accept', 'application/json')
-        .expect(200, [{
-          song_name: 'Ode to Viceroy',
-          artist: 'Mac DeMarco'
-        },
-        {
-          song_name: 'Apocalypse Dreams',
-          artist: 'Tame Impala'
-        },
-        {
-          song_name: 'Which Way to Go',
-          artist: 'Eddy Current Suppression Ring',
-        },
-        {
-          song_name: 'Snowblind',
-          artist: 'Black Sabbath'
-        },
-        {
-          song_name: 'Mt Abraxas',
-          artist: 'Uncle Acid And The Deadbeats',
-        }
+        .expect(200, [ "https://p.scdn.co/mp3-preview/6ece6ef8b0c879c99b97901c7897f32b0dd54fbd?cid=null",
+        "https://p.scdn.co/mp3-preview/177e9f1ac16201637073d95584df1883efe9d18d?cid=null",
+        "https://p.scdn.co/mp3-preview/fc933abfb501eb58d5efa54d0ce86f3746dc7ffc?cid=null",
+        "https://p.scdn.co/mp3-preview/8edfb217d198d54899ee5f8cedc743b1547dc20e?cid=null",
+        "https://p.scdn.co/mp3-preview/4f92a6f5c14c970cb1dad3706391edf5c436eadf?cid=null"
       ], done);
     });
 
     it('should respond with 404 if song enters incorrect parameter', (done) => {
       supertest(app)
-      .get('/users/hkhjk')
+      .get('/api/users/hkhjk')
       .set('Accept', 'Application/json')
       .expect(404, JSON.stringify({code:404, message: "please enter valid information"}, done));
     });
 });
 
 describe('GET /users/{id}/groups_members', () => {
-    it('should get all groups that belong to a certain song', (done) => {
+    it('should get all groups that belong to a certain user', (done) => {
       supertest(app)
-        .get('/users/5/group_members')
+        .get('/api/users/5/groups_members')
         .set('Accept', 'application/json')
         .expect(200, [{
           group_name: 'g42'
         }], done);
     });
-    it('should respond with 404 if song enters incorrect parameter', (done) => {
+    it('should respond with 404 if user enters incorrect parameter', (done) => {
       supertest(app)
-      .get('/users/hkhjk')
+      .get('/api/users/hkhjk/groups_members')
       .set('Accept', 'Application/json')
       .expect(404, JSON.stringify({code:404, message: "please enter valid information"}, done));
     });
 });
-// create association in playlist
+
+
 describe('POST /users/{id}/playlist/songs', () => {
-    it('allows authorized song to add song to their personal playlist', (done) => {
+    it('allows authorized user to add song to their personal playlist', (done) => {
       supertest(app)
-        .post('/users/4/playlist/songs')
+        .post('/api/users/4/playlist/songs')
         .set('Accept', 'application/json')
         .send({
-          user_name: 'SanjeetUppal',
-          song_name: '21 Questions',
+          song: '21 Questions',
           artist: '50 Cent'
         })
         .expect((song) => {
           delete song.body.created_at;
           delete song.body.updated_at;
         })
-        .expect(200,{
-          id: 69,
-          song_name: '21 Questions',
-          artist: '50 Cent'
-        })
+        .expect(200, {
+          song: {
+            id: 69,
+            song_name: '21 Questions',
+            artist: '50 Cent'
+          },
+          playlist: {
+            id: 69,
+            user_id: 4,
+            song_id: 69
+          }
+        },done)
         .expect('Content-Type', /json/)
-        .end((httpErr, _res) => {
+    });
+});
 
-        if (httpErr) {
-          return done(httpErr);
-        }
 
-        knex('songs')
-          .where('id', 69)
-          .first()
-          .then((song) => {
-
-            delete song.created_at;
-            delete song.updated_at;
-
-            assert.deepEqual(song,
-              {
-                id: 69,
-                song_name: '21 Questions',
-                artist: '50 Cent'
-              });
-            done();
-          })
+describe('DELETE /users/{id}/playlist/songs/{sid}', () => {
+    it('should allow authorized user to delete a song off their personal playlist', (done) => {
+      supertest(app)
+        .delete('/api/users/4/playlist/songs/14')
+        .set('Accept', 'application/json')
+        .expect(200, {
+          song: {
+            song_name: ' Falling in Love With You',
+            artist: ' UB-40'
+          },
+          playlist: {
+            user_id: 4,
+            song_id: 14
+          }
+        }, done);
     });
 });
