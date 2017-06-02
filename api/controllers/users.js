@@ -1,14 +1,13 @@
 
 
 const knex = require("../../knex");
-const bcrypt = require("bcrypt-as-promised");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const formatSongs = require("./apicallFormat").formatSongs;
 const rp = require("request-promise");
 const dotenv = require("dotenv").config();
 const {
-<<<<<<< HEAD
     camelizeKeys,
     decamelizeKeys
 } = require('humps');
@@ -19,31 +18,6 @@ const {
    .where('id', paramId)
    .then(user=> {
      if(!user) {
-       console.log("this is the user i see first", user);
-       res.status(404).json('Not Found');
-     } else {
-       delete user[0].hashed_password;
-       delete user[0].created_at;
-       delete user[0].updated_at;
-       console.log(user);
-     }
-     res.status(200).json(user);
-   })
-   .catch(err => {
-     console.error(err);
-   });
-||||||| merged common ancestors
-    camelizeKeys,
-    decamelizeKeys
-} = require('humps');
-//Ivonne
- function userById(req, res) {
-   let paramId = req.swagger.params.id.value;
-   knex('users')
-   .where('id', paramId)
-   .then(user=> {
-     if(!user) {
-       console.log("this is the user i see first", user);
        res.status(404).json('Not Found');
      } else {
        delete user[0].hashed_password;
@@ -51,40 +25,15 @@ const {
        delete user[0].updated_at;
        delete user[0].id;
        delete user[0].user_name;
-       console.log(user);
      }
      res.status(200).json(user);
    })
    .catch(err => {
      console.error(err);
    });
-=======
-  camelizeKeys,
-  decamelizeKeys
-} = require("humps");
-
-// would like to see comments above each function.
-function userById(req, res) {
-  const paramId = req.swagger.params.id.value;
-  knex("users")
-    .where("id", paramId)
-    .then((user) => {
-      if (!user) {
-        res.status(404).json("Not Found");
-      } else {
-        delete user[0].hashed_password;
-        delete user[0].created_at;
-        delete user[0].updated_at;
-      }
-      res.status(200).json(user);
-    })
-    .catch((err) => {
-      console.error(err);
-    });
->>>>>>> 8188b833beff25520272f9bf62e5ac7e36945fb3
 }
 
-// would like to see comments above each function.
+// grab a user's personal playlist
 function getUserPlaylistByUserId(req, res) {
   let formatedSongs;
   const userId = req.swagger.params.id.value;
@@ -114,10 +63,12 @@ function getUserPlaylistByUserId(req, res) {
     })
 
     .then((songObjects) => {
+      // make call to Spotify api to grab songs
       const spotifyRequests = songObjects.map(songObj => rp(`https://api.spotify.com/v1/search?q=${songObj.song_name}%20artist:${songObj.artist}&type=track`));
       return Promise.all(spotifyRequests);
     })
     .then((spotifyResponses) => {
+      // show error message if song is not found
       const parsedResponse = spotifyResponses.map((album) => {
         if (album === undefined) {
           return "preview url not found";
@@ -134,7 +85,7 @@ function getUserPlaylistByUserId(req, res) {
 }
 
 
-// would like to see comments above each function.
+// shows all groups the signed in user belongs to
 function getGroupsPerUser(req, res) {
   const userId = req.swagger.params.id.value;
   knex("groups")
@@ -158,7 +109,7 @@ function getGroupsPerUser(req, res) {
     });
 }
 
-// would like to see comments above each function.
+// lets a signed in user add a song to their personal playlist
 function addSong(req, res) {
   const userName = req.body.user_name;
   const songName = req.body.song;
@@ -173,6 +124,7 @@ function addSong(req, res) {
     .first()
     .then((song) => {
       if (song) {
+        //checks if song exists first if true then have user id association else add song
         const data = {
           song_id: song.id,
           user_id: userId
@@ -214,7 +166,7 @@ function addSong(req, res) {
 }
 
 
-// would like to see comments above each function.
+// lets a signed in user delete a song to their personal playlist
 function deleteSong(req, res) {
   const userId = req.swagger.params.id.value;
   const songId = req.swagger.params.sid.value;
@@ -226,11 +178,11 @@ function deleteSong(req, res) {
     .where("song_id", songId)
     .first()
     .then((playlistAssociation) => {
+      //deletes user id with song and not the song itself
       playlistToDelete = playlistAssociation;
       delete playlistToDelete.created_at;
       delete playlistToDelete.updated_at;
       delete playlistToDelete.id;
-      // console.log(playlistToDelete);
     })
     .then(() => knex("songs")
       .select()
